@@ -229,26 +229,28 @@ sub NameAttrTypeDeclarator {	# TODO
 			warn __PACKAGE__,"::NameTypeDeclarator array : ERROR_INTERNAL $attr \n";
 		}
 	} else {
-		if (exists $node->{modifier}) {		# native
-			my $t_name = $node->{c_name};
-			if (      $attr eq 'in' ) {
-				return $t_name . " "   . $v_name;
-			} elsif ( $attr eq 'inout' ) {
-				return $t_name . " * " . $v_name;
-			} elsif ( $attr eq 'out' ) {
-				return $t_name . " * " . $v_name;
-			} elsif ( $attr eq 'return' ) {
-				return $t_name;
-			} else {
-				warn __PACKAGE__,"::NameAttrTypeDeclarator : ERROR_INTERNAL $attr \n";
-			}
-		} else {
-			my $type = $node->{type};
-			unless (ref $type) {
-				$type = $symbtab->Lookup($type);
-			}
-			return $proto->NameAttr($symbtab, $type, $v_name, $attr);
+		my $type = $node->{type};
+		unless (ref $type) {
+			$type = $symbtab->Lookup($type);
 		}
+		return $proto->NameAttr($symbtab, $type, $v_name, $attr);
+	}
+}
+
+sub NameAttrNativeType {
+	my $proto = shift;
+	my ($symbtab, $node, $v_name, $attr) = @_;
+	my $t_name = $node->{cpp_name};
+	if (      $attr eq 'in' ) {
+		return $t_name . " "   . $v_name;
+	} elsif ( $attr eq 'inout' ) {
+		return $t_name . " * " . $v_name;
+	} elsif ( $attr eq 'out' ) {
+		return $t_name . " * " . $v_name;
+	} elsif ( $attr eq 'return' ) {
+		return $t_name;
+	} else {
+		warn __PACKAGE__,"::NameAttrNativeType : ERROR_INTERNAL $attr \n";
 	}
 }
 

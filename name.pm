@@ -249,18 +249,21 @@ sub visitTypeDeclarator {
 	return if (exists $node->{cpp_ns});
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
-	unless (exists $node->{modifier}) {		# native
-		$node->{cpp_ns} = $self->_get_ns($node);
-		$node->{cpp_name} = $self->_get_name($node);
-		my $type = $self->_get_defn($node->{type});
-		if ($type->isa('SequenceType') and !exists $node->{array_size}) {
-			$type->{repos_id} = $node->{repos_id};
-			$node->{cpp_has_var} = 1;
-			$type->visit($self, $node->{cpp_name});
-		} else {
-			$type->visit($self);
-		}
+	my $type = $self->_get_defn($node->{type});
+	if ($type->isa('SequenceType') and !exists $node->{array_size}) {
+		$type->{repos_id} = $node->{repos_id};
+		$node->{cpp_has_var} = 1;
+		$type->visit($self, $node->{cpp_name});
+	} else {
+		$type->visit($self);
 	}
+}
+
+sub visitNativeType {
+	my $self = shift;
+	my ($node) = @_;
+	$node->{cpp_ns} = $self->_get_ns($node);
+	$node->{cpp_name} = $self->_get_name($node);
 }
 
 #
@@ -269,56 +272,86 @@ sub visitTypeDeclarator {
 #	See	1.5		Mapping for Basic Data Types
 #
 
-sub visitBasicType {
+sub visitIntegerType {
 	my $self = shift;
 	my ($node) = @_;
 	$node->{cpp_ns} = "CORBA";
-	if      ($node->isa('FloatingPtType')) {
-		if      ($node->{value} eq 'float') {
-			$node->{cpp_name} = "Float";
-		} elsif ($node->{value} eq 'double') {
-			$node->{cpp_name} = "Double";
-		} elsif ($node->{value} eq 'long double') {
-			$node->{cpp_name} = "LongDouble";
-		} else {
-			warn __PACKAGE__,"::visitBasicType (FloatingType) $node->{value}.\n"
-		}
-	} elsif ($node->isa('IntegerType')) {
-		if      ($node->{value} eq 'short') {
-			$node->{cpp_name} = "Short";
-		} elsif ($node->{value} eq 'unsigned short') {
-			$node->{cpp_name} = "UShort";
-		} elsif ($node->{value} eq 'long') {
-			$node->{cpp_name} = "Long";
-		} elsif ($node->{value} eq 'unsigned long') {
-			$node->{cpp_name} = "ULong";
-		} elsif ($node->{value} eq 'long long') {
-			$node->{cpp_name} = "LongLong";
-		} elsif ($node->{value} eq 'unsigned long long') {
-			$node->{cpp_name} = "ULongLong";
-		} else {
-			warn __PACKAGE__,"::visitBasicType (IntegerType) $node->{value}.\n"
-		}
-	} elsif ($node->isa('CharType')) {
-		$node->{cpp_name} = "Char";
-	} elsif ($node->isa('WideCharType')) {
-		$node->{cpp_name} = "WChar";
-	} elsif ($node->isa('BooleanType')) {
-		$node->{cpp_name} = "Boolean";
-	} elsif ($node->isa('OctetType')) {
-		$node->{cpp_name} = "Octet";
-	} elsif ($node->isa('AnyType')) {
-		$node->{cpp_name} = "Any";
-		$node->{cpp_has_var} = 1;
-	} elsif ($node->isa('ObjectType')) {
-		$node->{cpp_name} = "Object";
-		$node->{cpp_has_ptr} = 1;
-	} elsif ($node->isa('ValueBaseType')) {
-		$node->{cpp_name} = "ValueBase";	# ???
-		$node->{cpp_has_ptr} = 1;			# ???
+	if      ($node->{value} eq 'float') {
+		$node->{cpp_name} = "Float";
+	} elsif ($node->{value} eq 'double') {
+		$node->{cpp_name} = "Double";
+	} elsif ($node->{value} eq 'long double') {
+		$node->{cpp_name} = "LongDouble";
 	} else {
-		warn __PACKAGE__,"::visitBasicType INTERNAL ERROR (",ref $node,").\n"
+		warn __PACKAGE__,"::visitIntegerType $node->{value}.\n"
 	}
+}
+
+sub visitFloatingPtType {
+	my $self = shift;
+	my ($node) = @_;
+	$node->{cpp_ns} = "CORBA";
+	if      ($node->{value} eq 'float') {
+		$node->{cpp_name} = "Float";
+	} elsif ($node->{value} eq 'double') {
+		$node->{cpp_name} = "Double";
+	} elsif ($node->{value} eq 'long double') {
+		$node->{cpp_name} = "LongDouble";
+	} else {
+		warn __PACKAGE__,"::visitFloatingPtType $node->{value}.\n"
+	}
+}
+
+sub visitCharType {
+	my $self = shift;
+	my ($node) = @_;
+	$node->{cpp_ns} = "CORBA";
+	$node->{cpp_name} = "Char";
+}
+
+sub visitWideCharType {
+	my $self = shift;
+	my ($node) = @_;
+	$node->{cpp_ns} = "CORBA";
+	$node->{cpp_name} = "WChar";
+}
+
+sub visitBooleanType {
+	my $self = shift;
+	my ($node) = @_;
+	$node->{cpp_ns} = "CORBA";
+	$node->{cpp_name} = "Boolean";
+}
+
+sub visitOctetType {
+	my $self = shift;
+	my ($node) = @_;
+	$node->{cpp_ns} = "CORBA";
+	$node->{cpp_name} = "Octet";
+}
+
+sub visitAnyType {
+	my $self = shift;
+	my ($node) = @_;
+	$node->{cpp_ns} = "CORBA";
+	$node->{cpp_name} = "Any";
+	$node->{cpp_has_var} = 1;
+}
+
+sub visitObjectType {
+	my $self = shift;
+	my ($node) = @_;
+	$node->{cpp_ns} = "CORBA";
+	$node->{cpp_name} = "Object";
+	$node->{cpp_has_var} = 1;
+}
+
+sub visitValueBaseType {
+	my $self = shift;
+	my ($node) = @_;
+	$node->{cpp_ns} = "CORBA";
+	$node->{cpp_name} = "ValueBase";
+	$node->{cpp_has_var} = 1;
 }
 
 #
