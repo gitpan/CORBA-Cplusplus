@@ -1,5 +1,10 @@
 Revision history for Perl extension CORBA::Cplusplus.
 
+0.10  Thu Feb 19 18:30:00 2004
+	- compatible with CORBA::IDL 2.20
+	- idl2cpp.pl : add option -h (display help)
+	- idl2cpp.pl : add option -v (display version)
+
 0.02  Mon Jan 13 12:30:00 2003
 	- first release
 

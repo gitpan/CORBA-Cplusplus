@@ -7,11 +7,11 @@ use UNIVERSAL;
 #			C++ Language Mapping Specification, New Edition June 1999
 #
 
-package CplusplusLengthVisitor;
+package CORBA::Cplusplus::lengthVisitor;
 
 use CORBA::C::type;
 
-use base qw(ClengthVisitor);
+use base qw(CORBA::C::lengthVisitor);
 
 # builds $node->{length}
 
@@ -20,7 +20,7 @@ sub new {
 	my $class = ref($proto) || $proto;
 	my $self = {};
 	bless($self, $class);
-	my($parser) = @_;
+	my ($parser) = @_;
 	$self->{srcname} = $parser->YYData->{srcname};
 	$self->{symbtab} = $parser->YYData->{symbtab};
 	$self->{done_hash} = {};
@@ -33,7 +33,7 @@ sub new {
 
 sub _get_length {
 	my $self = shift;
-	my($type) = @_;
+	my ($type) = @_;
 	if (	   $type->isa('AnyType')
 			or $type->isa('SequenceType')
 			or $type->isa('StringType')
@@ -56,41 +56,48 @@ sub _get_length {
 #	3.8		Interface Declaration
 #
 
-sub visitNameBaseInterface {
+sub visitBaseInterface {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	return if (exists $node->{length});
 	$node->{length} = 'variable';
 	foreach (@{$node->{list_export}}) {
-		$self->{symbtab}->Lookup($_)->visitName($self);
+		$self->{symbtab}->Lookup($_)->visit($self);
 	}
+}
+
+sub visitForwardBaseInterface {
+	my $self = shift;
+	my ($node) = @_;
+	return if (exists $node->{length});
+	$node->{length} = 'variable';
 }
 
 #
 #	3.9		Value Declaration
 #
 
-sub visitNameStateMember {
+sub visitStateMember {
 	my $self = shift;
-	my($node) = @_;
-	$self->_get_defn($node->{type})->visitName($self);
+	my ($node) = @_;
+	$self->_get_defn($node->{type})->visit($self);
 }
 
-sub visitNameInitializer {
+sub visitInitializer {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	foreach (@{$node->{list_param}}) {
-		$self->_get_defn($_->{type})->visitName($self);
+		$self->_get_defn($_->{type})->visit($self);
 	}
 }
 
 ##############################################################################
 
-package CplusplusTypeVisitor;
+package CORBA::Cplusplus::typeVisitor;
 
 use CORBA::C::type;
 
-use base qw(CtypeVisitor);
+use base qw(CORBA::C::typeVisitor);
 
 # builds $node->{cpp_arg}
 
@@ -99,7 +106,7 @@ sub new {
 	my $class = ref($proto) || $proto;
 	my $self = {};
 	bless($self, $class);
-	my($parser) = @_;
+	my ($parser) = @_;
 	$self->{srcname} = $parser->YYData->{srcname};
 	$self->{symbtab} = $parser->YYData->{symbtab};
 	return $self;
@@ -109,12 +116,12 @@ sub new {
 #	3.9		Value Declaration
 #
 
-sub visitNameInitializer {
+sub visitInitializer {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	foreach (@{$node->{list_param}}) {	# parameter
 		my $type = $self->_get_type($_->{type});
-		$_->{cpp_arg} = CplusplusNameattr->NameAttr($self->{symbtab}, $type, $_->{cpp_name}, $_->{attr});
+		$_->{cpp_arg} = CORBA::Cplusplus::nameattr->NameAttr($self->{symbtab}, $type, $_->{cpp_name}, $_->{attr});
 	}
 }
 
@@ -122,20 +129,20 @@ sub visitNameInitializer {
 #	3.13	Operation Declaration
 #
 
-sub visitNameOperation {
+sub visitOperation {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $type = $self->_get_type($node->{type});
-	$node->{cpp_arg} = CplusplusNameattr->NameAttr($self->{symbtab}, $type, '', 'return');
+	$node->{cpp_arg} = CORBA::Cplusplus::nameattr->NameAttr($self->{symbtab}, $type, '', 'return');
 	foreach (@{$node->{list_param}}) {	# parameter
 		$type = $self->_get_type($_->{type});
-		$_->{cpp_arg} = CplusplusNameattr->NameAttr($self->{symbtab}, $type, $_->{cpp_name}, $_->{attr});
+		$_->{cpp_arg} = CORBA::Cplusplus::nameattr->NameAttr($self->{symbtab}, $type, $_->{cpp_name}, $_->{attr});
 	}
 }
 
 ##############################################################################
 
-package CplusplusNameattr;
+package CORBA::Cplusplus::nameattr;
 
 #
 #	See 1.22	Argument Passing Considerations
@@ -145,10 +152,12 @@ package CplusplusNameattr;
 
 sub NameAttr {
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	my $class = ref $node;
 	$class = "BasicType" if ($node->isa("BasicType"));
 	$class = "AnyType" if ($node->isa("AnyType"));
+	$class = "BaseInterface" if ($node->isa("BaseInterface"));
+	$class = "ForwardBaseInterface" if ($node->isa("ForwardBaseInterface"));
 	my $func = 'NameAttr' . $class;
 	if($proto->can($func)) {
 		return $proto->$func($symbtab, $node, $v_name, $attr);
@@ -157,9 +166,9 @@ sub NameAttr {
 	}
 }
 
-sub NameAttrRegularInterface {
+sub NameAttrBaseInterface {
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	my $t_name = $node->{cpp_name};
 	if (      $attr eq 'in' ) {
 		return $t_name . "_ptr "   . $v_name;
@@ -170,13 +179,13 @@ sub NameAttrRegularInterface {
 	} elsif ( $attr eq 'return' ) {
 		return $t_name . "_ptr";
 	} else {
-		warn __PACKAGE__,"::NameRegularInterface : ERROR_INTERNAL $attr \n";
+		warn __PACKAGE__,"::NameBaseInterface : ERROR_INTERNAL $attr \n";
 	}
 }
 
-sub NameAttrAbstractInterface {
+sub NameAttrForwardBaseInterface {
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	my $t_name = $node->{cpp_name};
 	if (      $attr eq 'in' ) {
 		return $t_name . "_ptr "   . $v_name;
@@ -187,82 +196,13 @@ sub NameAttrAbstractInterface {
 	} elsif ( $attr eq 'return' ) {
 		return $t_name . "_ptr";
 	} else {
-		warn __PACKAGE__,"::NameAbstractInterface : ERROR_INTERNAL $attr \n";
-	}
-}
-
-sub NameAttrLocalInterface {
-	# C++ mapping is aligned with CORBA 2.3
-	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
-	my $t_name = $node->{cpp_name};
-	if (      $attr eq 'in' ) {
-		return $t_name . "_ptr "   . $v_name;
-	} elsif ( $attr eq 'inout' ) {
-		return $t_name . "_out " . $v_name;
-	} elsif ( $attr eq 'out' ) {
-		return $t_name . "_out " . $v_name;
-	} elsif ( $attr eq 'return' ) {
-		return $t_name . "_ptr";
-	} else {
-		warn __PACKAGE__,"::NameLocalInterface : ERROR_INTERNAL $attr \n";
-	}
-}
-
-sub NameAttrRegularValue {
-	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
-	my $t_name = $node->{cpp_name};
-	if (      $attr eq 'in' ) {
-		return $t_name . "_ptr "   . $v_name;
-	} elsif ( $attr eq 'inout' ) {
-		return $t_name . "_out " . $v_name;
-	} elsif ( $attr eq 'out' ) {
-		return $t_name . "_out " . $v_name;
-	} elsif ( $attr eq 'return' ) {
-		return $t_name . "_ptr";
-	} else {
-		warn __PACKAGE__,"::NameInterface : ERROR_INTERNAL $attr \n";
-	}
-}
-
-sub NameAttrBoxedValue {
-	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
-	my $t_name = $node->{cpp_name};
-	if (      $attr eq 'in' ) {
-		return $t_name . "_ptr "   . $v_name;
-	} elsif ( $attr eq 'inout' ) {
-		return $t_name . "_out " . $v_name;
-	} elsif ( $attr eq 'out' ) {
-		return $t_name . "_out " . $v_name;
-	} elsif ( $attr eq 'return' ) {
-		return $t_name . "_ptr";
-	} else {
-		warn __PACKAGE__,"::NameInterface : ERROR_INTERNAL $attr \n";
-	}
-}
-
-sub NameAttrAbstractValue {
-	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
-	my $t_name = $node->{cpp_name};
-	if (      $attr eq 'in' ) {
-		return $t_name . "_ptr "   . $v_name;
-	} elsif ( $attr eq 'inout' ) {
-		return $t_name . "_out " . $v_name;
-	} elsif ( $attr eq 'out' ) {
-		return $t_name . "_out " . $v_name;
-	} elsif ( $attr eq 'return' ) {
-		return $t_name . "_ptr";
-	} else {
-		warn __PACKAGE__,"::NameInterface : ERROR_INTERNAL $attr \n";
+		warn __PACKAGE__,"::NameForwardBaseInterface : ERROR_INTERNAL $attr \n";
 	}
 }
 
 sub NameAttrTypeDeclarator {	# TODO
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	if (exists $node->{array_size}) {
 #		my $t_name = $node->{type}->{c_name};
 #		my $array = '';
@@ -314,7 +254,7 @@ sub NameAttrTypeDeclarator {	# TODO
 
 sub NameAttrBasicType {
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	my $t_name = $node->{cpp_ns} . "::" . $node->{cpp_name};
 	if (      $attr eq 'in' ) {
 		return $t_name . " "   . $v_name;
@@ -331,7 +271,7 @@ sub NameAttrBasicType {
 
 sub NameAttrAnyType {	# TODO
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	$node->{length} = 'variable';
 	my $t_name = $node->{cpp_ns} . "::" . $node->{cpp_name};
 	if (      $attr eq 'in' ) {
@@ -349,7 +289,7 @@ sub NameAttrAnyType {	# TODO
 
 sub NameAttrStructType {	# TODO
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	my $t_name = $node->{cpp_ns} . "::" . $node->{cpp_name};
 	if (      $attr eq 'in' ) {
 		return $t_name . " * " . $v_name;
@@ -374,7 +314,7 @@ sub NameAttrStructType {	# TODO
 
 sub NameAttrUnionType {		# TODO
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	my $t_name = $node->{cpp_ns} . "::" . $node->{cpp_name};
 	if (      $attr eq 'in' ) {
 		return $t_name . " * " . $v_name;
@@ -399,7 +339,7 @@ sub NameAttrUnionType {		# TODO
 
 sub NameAttrEnumType {
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	my $t_name = $node->{cpp_ns} . "::" . $node->{cpp_name};
 	if (      $attr eq 'in' ) {
 		return $t_name . " "   . $v_name;
@@ -416,7 +356,7 @@ sub NameAttrEnumType {
 
 sub NameAttrSequenceType {	# TODO
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	my $t_name = $node->{cpp_ns} . "::" . $node->{cpp_name};
 	if (      $attr eq 'in' ) {
 		return $t_name . " * "  . $v_name;
@@ -433,7 +373,7 @@ sub NameAttrSequenceType {	# TODO
 
 sub NameAttrStringType {
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	my $t_name = $node->{cpp_ns} . "::" . $node->{cpp_name};
 	if (      $attr eq 'in' ) {
 		return "const " . $t_name . " "   . $v_name;
@@ -450,7 +390,7 @@ sub NameAttrStringType {
 
 sub NameAttrWideStringType {
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	my $t_name = $node->{cpp_ns} . "::" . $node->{cpp_name};
 	if (      $attr eq 'in' ) {
 		return "const " . $t_name . " "   . $v_name;
@@ -467,7 +407,7 @@ sub NameAttrWideStringType {
 
 sub NameAttrFixedPtType {	# TODO
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	my $t_name = $node->{cpp_ns} . "::" . $node->{cpp_name};
 	if (      $attr eq 'in' ) {
 		return $t_name . " * "  . $v_name;
@@ -484,7 +424,7 @@ sub NameAttrFixedPtType {	# TODO
 
 sub NameAttrVoidType {
 	my $proto = shift;
-	my($symbtab, $node, $v_name, $attr) = @_;
+	my ($symbtab, $node, $v_name, $attr) = @_;
 	my $t_name = $node->{cpp_name};
 	if ($attr ne 'return') {
 		warn __PACKAGE__,"::NameVoidType : ERROR_INTERNAL \n";

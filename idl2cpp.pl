@@ -9,13 +9,14 @@ use CORBA::Cplusplus::literal;
 use CORBA::Cplusplus::name;
 use CORBA::Cplusplus::type;
 use CORBA::Cplusplus::include;
+use CORBA::C::include;
 
 my $parser = new Parser;
 $parser->YYData->{verbose_error} = 1;		# 0, 1
 $parser->YYData->{verbose_warning} = 1;		# 0, 1
 $parser->YYData->{verbose_info} = 1;		# 0, 1
-$parser->YYData->{verbose_deprecated} = 0;	# 0, 1 (concerns only version '2.4' and upper)
-$parser->YYData->{symbtab} = new Symbtab($parser);
+$parser->YYData->{verbose_deprecated} = 1;	# 0, 1 (concerns only version '2.4' and upper)
+$parser->YYData->{symbtab} = new CORBA::IDL::Symbtab($parser);
 my $cflags = '-D__idl2cpp';
 if ($Parser::IDL_version lt '3.0') {
 	$cflags .= ' -D_PRE_3_0_COMPILER_';
@@ -26,7 +27,20 @@ if ($^O eq 'MSWin32') {
 } else {
 	$parser->YYData->{preprocessor} = 'cpp -C ' . $cflags;
 }
-$parser->getopts("i:x");
+$parser->getopts("hi:vx");
+if ($parser->YYData->{opt_v}) {
+	print "CORBA::Cplusplus $CORBA::Cplusplus::VERSION\n";
+	print "CORBA::C $CORBA::C::VERSION\n";
+	print "CORBA::IDL $CORBA::IDL::VERSION\n";
+	print "IDL $Parser::IDL_version\n";
+	print "$0\n";
+	print "Perl $]\n";
+	exit;
+}
+if ($parser->YYData->{opt_h}) {
+	use Pod::Usage;
+	pod2usage(-verbose => 1);
+}
 $parser->Run(@ARGV);
 $parser->YYData->{symbtab}->CheckForward();
 $parser->YYData->{symbtab}->CheckRepositoryID();
@@ -53,16 +67,16 @@ if (        $parser->YYData->{verbose_deprecated}
 
 if (        exists $parser->YYData->{root}
 		and ! exists $parser->YYData->{nb_error} ) {
-	$parser->YYData->{root}->visitName(new repositoryIdVisitor($parser));
+	$parser->YYData->{root}->visit(new CORBA::IDL::repositoryIdVisitor($parser));
 	if (        $Parser::IDL_version ge '3.0'
 			and $parser->YYData->{opt_x} ) {
 		$parser->YYData->{symbtab}->Export();
 	}
-	$parser->YYData->{root}->visitName(new CplusplusNameVisitor($parser));
-	$parser->YYData->{root}->visitName(new CplusplusLiteralVisitor($parser));
-	$parser->YYData->{root}->visitName(new CplusplusLengthVisitor($parser));
-	$parser->YYData->{root}->visitName(new CplusplusTypeVisitor($parser));
-	$parser->YYData->{root}->visit(new CplusplusIncludeVisitor($parser));
+	$parser->YYData->{root}->visit(new CORBA::Cplusplus::nameVisitor($parser));
+	$parser->YYData->{root}->visit(new CORBA::Cplusplus::literalVisitor($parser));
+	$parser->YYData->{root}->visit(new CORBA::Cplusplus::lengthVisitor($parser));
+	$parser->YYData->{root}->visit(new CORBA::Cplusplus::typeVisitor($parser));
+	$parser->YYData->{root}->visit(new CORBA::Cplusplus::includeVisitor($parser));
 }
 
 __END__
@@ -71,13 +85,13 @@ __END__
 
 idl2cpp - IDL compiler to language C++ mapping
 
-=head1 SYNOPSYS
+=head1 SYNOPSIS
 
 idl2cpp [options] I<spec>.idl
 
 =head1 OPTIONS
 
-All options are forwarded to C preprocessor, except -i -x.
+All options are forwarded to C preprocessor, except -h -i -v -x.
 
 With the GNU C Compatible Compiler Processor, useful options are :
 
@@ -99,13 +113,21 @@ Specific options :
 
 =over 8
 
+=item B<-h>
+
+Display help.
+
 =item B<-i> I<directory>
 
-Specify a path for import (only for version 3.0).
+Specify a path for import (only for IDL version 3.0).
+
+=item B<-v>
+
+Display version.
 
 =item B<-x>
 
-Enable export (only for version 3.0).
+Enable export (only for IDL version 3.0).
 
 =back
 
@@ -130,9 +152,9 @@ cpp, perl
 
 =head1 COPYRIGHT
 
-(c) 2002-2003 Francois PERRAD, France. All rights reserved.
+(c) 2002-2004 Francois PERRAD, France. All rights reserved.
 
-This program and all CORBA::IDL modules are distributed
+This program and all CORBA::Cplusplus modules are distributed
 under the terms of the Artistic Licence.
 
 =head1 AUTHOR

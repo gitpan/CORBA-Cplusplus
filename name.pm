@@ -7,7 +7,7 @@ use UNIVERSAL;
 #			C++ Language Mapping Specification, New Edition June 1999
 #
 
-package CplusplusNameVisitor;
+package CORBA::Cplusplus::nameVisitor;
 
 # builds $node->{cpp_name} and $node->{cpp_ns}
 
@@ -16,7 +16,7 @@ sub new {
 	my $class = ref($proto) || $proto;
 	my $self = {};
 	bless($self, $class);
-	my($parser) = @_;
+	my ($parser) = @_;
 	$self->{key} = 'cpp_name';
 	$self->{symbtab} = $parser->YYData->{symbtab};
 	$self->{cpp_keywords} = {		# See 1.43	C++ Keywords
@@ -100,7 +100,7 @@ sub new {
 
 sub _get_name {			# See 1.1.2 Scoped Names
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $name = $node->{idf};
 	$name =~ s/^_get_//;
 	$name =~ s/^_set_//;
@@ -113,7 +113,7 @@ sub _get_name {			# See 1.1.2 Scoped Names
 
 sub _get_ns {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $pkg = $node->{full};
 	$pkg =~ s/::[0-9A-Z_a-z]+$//;
 	return '' unless ($pkg);
@@ -139,7 +139,7 @@ sub _get_ns {
 
 sub _get_defn {
 	my $self = shift;
-	my($defn) = @_;
+	my ($defn) = @_;
 	if (ref $defn) {
 		return $defn;
 	} else {
@@ -151,11 +151,11 @@ sub _get_defn {
 #	3.5		OMG IDL Specification
 #
 
-sub visitNameSpecification {
+sub visitSpecification {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	foreach (@{$node->{list_export}}) {
-		$self->{symbtab}->Lookup($_)->visitName($self);
+		$self->{symbtab}->Lookup($_)->visit($self);
 	}
 }
 
@@ -163,14 +163,14 @@ sub visitNameSpecification {
 #	3.7		Module Declaration
 #
 
-sub visitNameModules {
+sub visitModules {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $ns_save = $self->{ns_curr};
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 	foreach (@{$node->{list_export}}) {
-		$self->{symbtab}->Lookup($_)->visitName($self);
+		$self->{symbtab}->Lookup($_)->visit($self);
 	}
 }
 
@@ -178,38 +178,48 @@ sub visitNameModules {
 #	3.8		Interface Declaration
 #
 
-sub visitNameBaseInterface {
+sub visitBaseInterface {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	return if (exists $node->{cpp_name});
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 	$node->{cpp_has_ptr} = 1;
 	$node->{cpp_has_var} = 1;
 	foreach (@{$node->{list_export}}) {
-		$self->{symbtab}->Lookup($_)->visitName($self);
+		$self->{symbtab}->Lookup($_)->visit($self);
 	}
+}
+
+sub visitForwardBaseInterface {
+	my $self = shift;
+	my ($node) = @_;
+	return if (exists $node->{cpp_name});
+	$node->{cpp_ns} = $self->_get_ns($node);
+	$node->{cpp_name} = $self->_get_name($node);
+	$node->{cpp_has_ptr} = 1;
+	$node->{cpp_has_var} = 1;
 }
 
 #
 #	3.9		Value Declaration
 #
 
-sub visitNameStateMember {
+sub visitStateMember {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
-	$self->_get_defn($node->{type})->visitName($self);
+	$self->_get_defn($node->{type})->visit($self);
 }
 
-sub visitNameInitializer {
+sub visitInitializer {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 	foreach (@{$node->{list_param}}) {
-		$_->visitName($self);			# parameter
+		$_->visit($self);			# parameter
 	}
 }
 
@@ -217,15 +227,15 @@ sub visitNameInitializer {
 #	3.10	Constant Declaration
 #
 
-sub visitNameConstant {
+sub visitConstant {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
-	$self->_get_defn($node->{type})->visitName($self);
+	$self->_get_defn($node->{type})->visit($self);
 }
 
-sub visitNameExpression {
+sub visitExpression {
 	# empty
 }
 
@@ -233,9 +243,9 @@ sub visitNameExpression {
 #	3.11	Type Declaration
 #
 
-sub visitNameTypeDeclarator {
+sub visitTypeDeclarator {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	return if (exists $node->{cpp_ns});
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
@@ -246,9 +256,9 @@ sub visitNameTypeDeclarator {
 		if ($type->isa('SequenceType') and !exists $node->{array_size}) {
 			$type->{repos_id} = $node->{repos_id};
 			$node->{cpp_has_var} = 1;
-			$type->visitName($self, $node->{cpp_name});
+			$type->visit($self, $node->{cpp_name});
 		} else {
-			$type->visitName($self);
+			$type->visit($self);
 		}
 	}
 }
@@ -259,9 +269,9 @@ sub visitNameTypeDeclarator {
 #	See	1.5		Mapping for Basic Data Types
 #
 
-sub visitNameBasicType {
+sub visitBasicType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = "CORBA";
 	if      ($node->isa('FloatingPtType')) {
 		if      ($node->{value} eq 'float') {
@@ -271,7 +281,7 @@ sub visitNameBasicType {
 		} elsif ($node->{value} eq 'long double') {
 			$node->{cpp_name} = "LongDouble";
 		} else {
-			warn __PACKAGE__,"::visitNameBasicType (FloatingType) $node->{value}.\n"
+			warn __PACKAGE__,"::visitBasicType (FloatingType) $node->{value}.\n"
 		}
 	} elsif ($node->isa('IntegerType')) {
 		if      ($node->{value} eq 'short') {
@@ -287,7 +297,7 @@ sub visitNameBasicType {
 		} elsif ($node->{value} eq 'unsigned long long') {
 			$node->{cpp_name} = "ULongLong";
 		} else {
-			warn __PACKAGE__,"::visitNameBasicType (IntegerType) $node->{value}.\n"
+			warn __PACKAGE__,"::visitBasicType (IntegerType) $node->{value}.\n"
 		}
 	} elsif ($node->isa('CharType')) {
 		$node->{cpp_name} = "Char";
@@ -307,7 +317,7 @@ sub visitNameBasicType {
 		$node->{cpp_name} = "ValueBase";	# ???
 		$node->{cpp_has_ptr} = 1;			# ???
 	} else {
-		warn __PACKAGE__,"::visitNameBasicType INTERNAL ERROR (",ref $node,").\n"
+		warn __PACKAGE__,"::visitBasicType INTERNAL ERROR (",ref $node,").\n"
 	}
 }
 
@@ -317,83 +327,76 @@ sub visitNameBasicType {
 #	3.11.2.1	Structures
 #
 
-sub visitNameStructType {
+sub visitStructType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	return if (exists $node->{cpp_ns});
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 	$node->{cpp_has_var} = 1;
-	foreach (@{$node->{list_value}}) {
-		$self->_get_defn($_)->visitName($self);		# single or array
+	foreach (@{$node->{list_member}}) {
+		$self->_get_defn($_)->visit($self);		# member
 	}
 }
 
-sub visitNameArray {
+sub visitMember {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_name} = $self->_get_name($node);
-	$self->_get_defn($node->{type})->visitName($self);
-}
-
-sub visitNameSingle {
-	my $self = shift;
-	my($node) = @_;
-	$node->{cpp_name} = $self->_get_name($node);
-	$self->_get_defn($node->{type})->visitName($self);
+	$self->_get_defn($node->{type})->visit($self);
 }
 
 #	3.11.2.2	Discriminated Unions
 #
 
-sub visitNameUnionType {
+sub visitUnionType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	return if (exists $node->{cpp_ns});
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 	$node->{cpp_has_var} = 1;
-	$self->_get_defn($node->{type})->visitName($self);
+	$self->_get_defn($node->{type})->visit($self);
 	foreach (@{$node->{list_expr}}) {
-		$_->visitName($self);			# case
+		$_->visit($self);			# case
 	}
 }
 
-sub visitNameCase {
+sub visitCase {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	foreach (@{$node->{list_label}}) {
-		$_->visitName($self);			# default or expression
+		$_->visit($self);			# default or expression
 	}
-	$node->{element}->visitName($self);
+	$node->{element}->visit($self);
 }
 
-sub visitNameDefault {
+sub visitDefault {
 	# empty
 }
 
-sub visitNameElement {
+sub visitElement {
 	my $self = shift;
-	my($node) = @_;
-	$self->_get_defn($node->{value})->visitName($self);		# single or array
+	my ($node) = @_;
+	$self->_get_defn($node->{value})->visit($self);		# member
 }
 
 #	3.11.2.4	Enumerations
 #
 
-sub visitNameEnumType {
+sub visitEnumType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 	foreach (@{$node->{list_expr}}) {
-		$_->visitName($self);			# enum
+		$_->visit($self);			# enum
 	}
 }
 
-sub visitNameEnum {
+sub visitEnum {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_name} = $self->_get_name($node);
 }
 
@@ -403,13 +406,13 @@ sub visitNameEnum {
 #	See	1.13	Mapping for Sequence Types
 #
 
-sub visitNameSequenceType {
+sub visitSequenceType {
 	my $self = shift;
-	my($node, $name) = @_;
+	my ($node, $name) = @_;
 	return if (exists $node->{cpp_ns});
 	$node->{cpp_ns} = $self->_get_ns($node);
 	my $type = 	$self->_get_defn($node->{type});
-	$type->visitName($self);
+	$type->visit($self);
 	unless (defined $name) {
 		$name = '_seq_' . $type->{cpp_name};
 		if (exists $node->{max}) {
@@ -424,9 +427,9 @@ sub visitNameSequenceType {
 #	See	1.7		Mapping for String Types
 #
 
-sub visitNameStringType {
+sub visitStringType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = "CORBA";
 	$node->{cpp_name} = "String";
 }
@@ -435,9 +438,9 @@ sub visitNameStringType {
 #	See	1.8		Mapping for Wide String Types
 #
 
-sub visitNameWideStringType {
+sub visitWideStringType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = "CORBA";
 	$node->{cpp_name} = "WString";
 }
@@ -446,17 +449,17 @@ sub visitNameWideStringType {
 #
 #
 
-sub visitNameFixedPtType {
+sub visitFixedPtType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $name = "Fixed";
 	$node->{cpp_ns} = "CORBA";
 	$node->{cpp_name} = $name;
 }
 
-sub visitNameFixedPtConstType {
+sub visitFixedPtConstType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $name = "Fixed";
 	$node->{cpp_ns} = "CORBA";
 	$node->{cpp_name} = $name;
@@ -466,14 +469,14 @@ sub visitNameFixedPtConstType {
 #	3.12	Exception Declaration
 #
 
-sub visitNameException {
+sub visitException {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	return if (exists $node->{cpp_ns});
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
-	foreach (@{$node->{list_value}}) {
-		$self->_get_defn($_)->visitName($self);		# single or array
+	foreach (@{$node->{list_member}}) {
+		$self->_get_defn($_)->visit($self);		# member
 	}
 }
 
@@ -482,27 +485,27 @@ sub visitNameException {
 #
 
 
-sub visitNameOperation {
+sub visitOperation {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
-	$self->_get_defn($node->{type})->visitName($self);
+	$self->_get_defn($node->{type})->visit($self);
 	foreach (@{$node->{list_param}}) {
-		$_->visitName($self);			# parameter
+		$_->visit($self);			# parameter
 	}
 }
 
-sub visitNameParameter {
+sub visitParameter {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_name} = $self->_get_name($node);
-	$self->_get_defn($node->{type})->visitName($self);
+	$self->_get_defn($node->{type})->visit($self);
 }
 
-sub visitNameVoidType {
+sub visitVoidType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_name} = "void";
 }
 
@@ -510,22 +513,22 @@ sub visitNameVoidType {
 #	3.14	Attribute Declaration
 #
 
-sub visitNameAttribute {
+sub visitAttribute {
 	my $self = shift;
-	my($node) = @_;
-	$node->{_get}->visitName($self);
-	$node->{_set}->visitName($self) if (exists $node->{_set});
+	my ($node) = @_;
+	$node->{_get}->visit($self);
+	$node->{_set}->visit($self) if (exists $node->{_set});
 }
 
 #
 #	3.15	Repository Identity Related Declarations
 #
 
-sub visitNameTypeId {
+sub visitTypeId {
 	# empty
 }
 
-sub visitNameTypePrefix {
+sub visitTypePrefix {
 	# empty
 }
 
@@ -537,42 +540,42 @@ sub visitNameTypePrefix {
 #	3.17	Component Declaration
 #
 
-sub visitNameProvides {
+sub visitProvides {
 	# C++ mapping is aligned with CORBA 2.3
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 }
 
-sub visitNameUses {
+sub visitUses {
 	# C++ mapping is aligned with CORBA 2.3
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 }
 
-sub visitNamePublishes {
+sub visitPublishes {
 	# C++ mapping is aligned with CORBA 2.3
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 }
 
-sub visitNameEmits {
+sub visitEmits {
 	# C++ mapping is aligned with CORBA 2.3
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 }
 
-sub visitNameConsumes {
+sub visitConsumes {
 	# C++ mapping is aligned with CORBA 2.3
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 }
@@ -581,25 +584,25 @@ sub visitNameConsumes {
 #	3.18	Home Declaration
 #
 
-sub visitNameFactory {
+sub visitFactory {
 	# C++ mapping is aligned with CORBA 2.3
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 	foreach (@{$node->{list_param}}) {
-		$_->visitName($self);			# parameter
+		$_->visit($self);			# parameter
 	}
 }
 
-sub visitNameFinder {
+sub visitFinder {
 	# C++ mapping is aligned with CORBA 2.3
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{cpp_ns} = $self->_get_ns($node);
 	$node->{cpp_name} = $self->_get_name($node);
 	foreach (@{$node->{list_param}}) {
-		$_->visitName($self);			# parameter
+		$_->visit($self);			# parameter
 	}
 }
 

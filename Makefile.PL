@@ -6,8 +6,8 @@ WriteMakefile(
     'VERSION_FROM'  => 'include.pm',
     'ABSTRACT'      => 'IDL compiler to C++',
     'PREREQ_PM'     => {
-                        'CORBA::IDL::node'  => 2.00,
-                        'CORBA::C::include' => 2.00
+                        'CORBA::IDL::node'  => 2.20,
+                        'CORBA::C::include' => 2.20
     },
     'PM'            => {
                         'include.pm'    => '$(INST_LIBDIR)/Cplusplus/include.pm',

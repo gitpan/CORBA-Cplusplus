@@ -8,20 +8,27 @@ use POSIX qw(ctime);
 #			C++ Language Mapping Specification, New Edition June 1999
 #
 
-package CplusplusIncludeVisitor;
+package CORBA::Cplusplus;
+
+use vars qw($VERSION);
+$VERSION = '0.10';
+
+package CORBA::Cplusplus::includeVisitor;
 
 # needs $node->{repos_id} (repositoryIdVisitor), $node->{cpp_name} (CplusplusNameVisitor)
 # $node->{cpp_arg} ??? (CtypeVisitor) and $node->{cpp_literal} (CplusplusLiteralVisitor)
 
 use vars qw($VERSION);
-$VERSION = '0.02';
+$VERSION = '0.10';
+
+use File::Basename;
 
 sub new {
 	my $proto = shift;
 	my $class = ref($proto) || $proto;
 	my $self = {};
 	bless($self, $class);
-	my($parser,$incpath) = @_;
+	my ($parser, $incpath) = @_;
 	$self->{incpath} = $incpath || '';
 	$self->{prefix} = '';				# provision for incskel
 	$self->{srcname} = $parser->YYData->{srcname};
@@ -29,10 +36,7 @@ sub new {
 	$self->{srcname_mtime} = $parser->YYData->{srcname_mtime};
 	$self->{symbtab} = $parser->YYData->{symbtab};
 	$self->{inc} = {};
-	my $filename = $self->{srcname};
-	$filename =~ s/^([^\/]+\/)+//;
-	$filename =~ s/\.idl$//i;
-	$filename .= '.hpp';
+	my $filename = basename($self->{srcname}, ".idl") . ".hpp";
 	$self->open_stream($filename);
 	$self->{filename} = $filename;
 	$self->{done_hash} = {};
@@ -42,7 +46,7 @@ sub new {
 
 sub open_stream {
 	my $self = shift;
-	my($filename) = @_;
+	my ($filename) = @_;
 	open(OUT, "> $filename")
 			or die "can't open $filename ($!).\n";
 	$self->{out} = \*OUT;
@@ -51,20 +55,18 @@ sub open_stream {
 
 sub _insert_inc {
 	my $self = shift;
-	my($filename) = @_;
+	my ($filename) = @_;
 	my $FH = $self->{out};
 	unless (exists $self->{inc}->{$filename}) {
 		$self->{inc}->{$filename} = 1;
-		$filename =~ s/^([^\/]+\/)+//;
-		$filename =~ s/\.idl$//i;
-		$filename .= '.h';
+		$filename = basename($filename, ".idl") . ".hpp";
 		print $FH "#include \"",$self->{prefix},$filename,"\"\n";
 	}
 }
 
 sub _no_mapping {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	if ($self->{srcname} eq $node->{filename}) {
 		if (ref($node) =~ /^Forward/) {
@@ -80,7 +82,7 @@ sub _no_mapping {
 
 sub _get_defn {
 	my $self = shift;
-	my($defn) = @_;
+	my ($defn) = @_;
 	if (ref $defn) {
 		return $defn;
 	} else {
@@ -94,7 +96,7 @@ sub _get_defn {
 
 sub visitSpecification {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	print $FH "// This file was generated (by ",$0,"). DO NOT modify it.\n";
 	print $FH "// From file : ",$self->{srcname},", ",$self->{srcname_size}," octets, ",POSIX::ctime($self->{srcname_mtime});
@@ -119,7 +121,7 @@ sub visitSpecification {
 
 sub visitModules {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	unless (exists $node->{$self->{num_key}}) {
 		$node->{$self->{num_key}} = 0;
 	}
@@ -130,7 +132,7 @@ sub visitModules {
 
 sub visitModule {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	if ($self->{srcname} eq $node->{filename}) {
 		my $defn = $self->{symbtab}->Lookup($node->{full});
@@ -159,7 +161,7 @@ sub visitModule {
 
 sub visitRegularInterface {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	$self->{itf} = $node->{cpp_name};
 	if ($self->{srcname} eq $node->{filename}) {
@@ -279,7 +281,7 @@ sub visitRegularInterface {
 
 sub visitAbstractInterface {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	$self->{itf} = $node->{cpp_name};
 	if ($self->{srcname} eq $node->{filename}) {
@@ -404,7 +406,7 @@ sub visitLocalInterface {
 
 sub visitForwardRegularInterface {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	if ($self->{srcname} eq $node->{filename}) {
 		my $defn = $self->{symbtab}->Lookup($node->{full});
@@ -420,7 +422,7 @@ sub visitForwardRegularInterface {
 
 sub visitForwardAbstractInterface {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	if ($self->{srcname} eq $node->{filename}) {
 		my $defn = $self->{symbtab}->Lookup($node->{full});
@@ -447,7 +449,7 @@ sub visitForwardLocalInterface {
 
 sub visitRegularValue {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	$self->{itf} = $node->{cpp_name};
 	if ($self->{srcname} eq $node->{filename}) {
@@ -489,7 +491,7 @@ sub visitRegularValue {
 
 sub visitBoxedValue {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	$self->{itf} = $node->{cpp_name};
 	if ($self->{srcname} eq $node->{filename}) {
@@ -531,7 +533,7 @@ sub visitBoxedValue {
 
 sub visitAbstractValue {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	$self->{itf} = $node->{cpp_name};
 	if ($self->{srcname} eq $node->{filename}) {
@@ -569,7 +571,7 @@ sub visitAbstractValue {
 
 sub visitForwardRegularValue {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	if ($self->{srcname} eq $node->{filename}) {
 		my $defn = $self->{symbtab}->Lookup($node->{full});
@@ -586,7 +588,7 @@ sub visitForwardRegularValue {
 
 sub visitForwardAbstractValue {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	if ($self->{srcname} eq $node->{filename}) {
 		my $defn = $self->{symbtab}->Lookup($node->{full});
@@ -608,7 +610,7 @@ sub visitForwardAbstractValue {
 
 sub visitConstant {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	if ($self->{srcname} eq $node->{filename}) {
 		my $defn;
@@ -640,7 +642,7 @@ sub visitConstant {
 
 sub visitTypeDeclarators {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	foreach (@{$node->{list_decl}}) {
 		$self->_get_defn($_)->visit($self);
 	}
@@ -648,7 +650,7 @@ sub visitTypeDeclarators {
 
 sub visitTypeDeclarator {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	return if (exists $node->{modifier});	# native IDL2.2
 	my $type = $self->_get_defn($node->{type});
 	if (	   $type->isa('StructType')
@@ -771,7 +773,7 @@ sub visitTypeDeclarator {
 
 sub visitStructType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	return if (exists $self->{done_hash}->{$node->{cpp_name}});
 	$self->{done_hash}->{$node->{cpp_name}} = 1;
 	foreach (@{$node->{list_expr}}) {
@@ -845,43 +847,38 @@ sub visitStructType {
 
 sub visitMembers {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	my $type = $self->_get_defn($node->{type});
 	if ($type->isa('SequenceType')) {
-		my $value = $self->_get_defn(${$node->{list_value}}[0]);
+		my $value = $self->_get_defn(${$node->{list_member}}[0]);
 		print $FH "\t\t\ttypedef ",$type->{cpp_name}," _",$value->{cpp_name},"_seq;\n";
 		print $FH "\t\t\t_",$value->{cpp_name},"_seq";
 	} else {
 		print $FH "\t\t\t",$type->{cpp_ns},"::",$type->{cpp_name};
 	}
 	my $first = 1;
-	foreach (@{$node->{list_value}}) {
+	foreach (@{$node->{list_member}}) {
 		if ($first) {
 			$first = 0;
 		} else {
 			print $FH ",";
 		}
-		$self->_get_defn($_)->visit($self);		# single or array
+		$self->_get_defn($_)->visit($self);		# member
 	}
 	print $FH ";\n";
 }
 
-sub visitArray {
+sub visitMember {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	print $FH " ",$node->{cpp_name};
-	foreach (@{$node->{array_size}}) {
-		print $FH "[",$_->{cpp_literal},"]";
+	if (exists $node->{array_size}) {
+		foreach (@{$node->{array_size}}) {
+			print $FH "[",$_->{cpp_literal},"]";
+		}
 	}
-}
-
-sub visitSingle {
-	my $self = shift;
-	my($node) = @_;
-	my $FH = $self->{out};
-	print $FH " ",$node->{cpp_name};
 }
 
 #	3.11.2.2	Discriminated Unions
@@ -891,7 +888,7 @@ sub visitSingle {
 
 sub visitUnionType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	return if (exists $self->{done_hash}->{$node->{cpp_name}});
 	$self->{done_hash}->{$node->{cpp_name}} = 1;
 	foreach (@{$node->{list_expr}}) {
@@ -979,17 +976,17 @@ sub visitUnionType {
 
 sub visitCase {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{element}->visit($self);
 }
 
 sub visitElement {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	my $type = $self->_get_defn($node->{type});
 	print $FH "\t\t",$type->{cpp_name};
-		$self->_get_defn($node->{value})->visit($self);		# single or array
+		$self->_get_defn($node->{value})->visit($self);		# member
 		print $FH ";\n";
 }
 
@@ -999,7 +996,7 @@ sub visitElement {
 
 sub visitForwardStructType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	if ($self->{srcname} eq $node->{filename}) {
 		my $defn = $self->{symbtab}->Lookup($node->{full});
@@ -1014,7 +1011,7 @@ sub visitForwardStructType {
 
 sub visitForwardUnionType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	if ($self->{srcname} eq $node->{filename}) {
 		my $defn = $self->{symbtab}->Lookup($node->{full});
@@ -1034,7 +1031,7 @@ sub visitForwardUnionType {
 
 sub visitEnumType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	return if (exists $self->{done_hash}->{$node->{cpp_name}});
 	$self->{done_hash}->{$node->{idf}} = 1;
 	my $FH = $self->{out};
@@ -1061,7 +1058,7 @@ sub visitEnumType {
 
 sub visitSequenceType {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	return if (exists $self->{done_hash}->{$node->{cpp_name}});
 	$self->{done_hash}->{$node->{cpp_name}} = 1;
 	my $FH = $self->{out};
@@ -1192,7 +1189,7 @@ sub visitFixedPtConstType {
 
 sub visitException {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	if (exists $node->{list_expr}) {
 		warn __PACKAGE__,"::visitException $node->{idf} : empty list_expr.\n"
 				unless (@{$node->{list_expr}});
@@ -1232,7 +1229,7 @@ sub visitException {
 
 sub visitOperation {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	my $FH = $self->{out};
 	print $FH "\t\tvirtual ",$node->{cpp_arg}," ",$self->{prefix},$node->{cpp_name},"(";
 	my $first = 1;
@@ -1264,7 +1261,7 @@ sub visitOperation {
 
 sub visitAttribute {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	$node->{_get}->visit($self);
 	$node->{_set}->visit($self) if (exists $node->{_set});
 }

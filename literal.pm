@@ -7,11 +7,11 @@ use UNIVERSAL;
 #			C++ Language Mapping Specification, New Edition June 1999
 #
 
-package CplusplusLiteralVisitor;
+package CORBA::Cplusplus::literalVisitor;
 
 use CORBA::C::literal;
 
-use base qw(CliteralVisitor);
+use base qw(CORBA::C::literalVisitor);
 
 # needs $node->{cpp_name} (CplusplusNameVisitor) for Enum
 # builds $node->{cpp_literal}
@@ -21,7 +21,7 @@ sub new {
 	my $class = ref($proto) || $proto;
 	my $self = {};
 	bless($self, $class);
-	my($parser) = @_;
+	my ($parser) = @_;
 	$self->{key} = 'cpp_literal';
 	$self->{symbtab} = $parser->YYData->{symbtab};
 	return $self;
@@ -29,7 +29,7 @@ sub new {
 
 sub _Eval {
 	my $self = shift;
-	my($list_expr, $type) = @_;
+	my ($list_expr, $type) = @_;
 	my $elt = pop @{$list_expr};
 	unless (ref $elt) {
 		$elt = $self->{symbtab}->Lookup($elt);
@@ -50,7 +50,7 @@ sub _Eval {
 	} elsif (  $elt->isa('Enum') ) {
 		return $elt->{cpp_name};
 	} elsif (  $elt->isa('Literal') ) {
-		$elt->visitName($self, $type);
+		$elt->visit($self, $type);
 		return $elt->{$self->{key}};
 	} else {
 		warn __PACKAGE__," _Eval: INTERNAL ERROR ",ref $elt,".\n";
@@ -58,9 +58,9 @@ sub _Eval {
 	}
 }
 
-sub visitNameBooleanLiteral {
+sub visitBooleanLiteral {
 	my $self = shift;
-	my($node) = @_;
+	my ($node) = @_;
 	if ($node->{value} eq 'TRUE') {
 		$node->{$self->{key}} = 'true';
 	} else {
