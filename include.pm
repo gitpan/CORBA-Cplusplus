@@ -11,7 +11,7 @@ use POSIX qw(ctime);
 package CORBA::Cplusplus::include;
 
 use vars qw($VERSION);
-$VERSION = '0.20';
+$VERSION = '0.21';
 
 package CORBA::Cplusplus::includeVisitor;
 
@@ -101,6 +101,15 @@ sub visitSpecification {
 	print $FH "#include <",$self->{incpath},"corba.hpp>\n";
 #	print $FH "#include \"corba.hpp\"\n";
 	print $FH "\n";
+	if (exists $node->{list_import}) {
+		foreach (@{$node->{list_import}}) {
+			my $basename = $_->{value};
+			$basename =~ s/^:://;
+			$basename =~ s/::/_/g;
+			print $FH "#include \"",$basename,".h\"\n";
+		}
+		print $FH "\n";
+	}
 	foreach (@{$node->{list_decl}}) {
 		$self->_get_defn($_)->visit($self);
 	}
@@ -1322,6 +1331,14 @@ sub visitForwardComponent {
 sub visitHome {
 	# C++ mapping is aligned with CORBA 2.3
 	shift->_no_mapping(@_);
+}
+
+#
+#	XPIDL
+#
+
+sub visitCodeFragment {
+	# empty
 }
 
 1;

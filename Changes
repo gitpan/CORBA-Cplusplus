@@ -1,5 +1,9 @@
 Revision history for Perl extension CORBA::Cplusplus.
 
+0.21  Mon Jun  7 08:30:00 2004
+	- better support for 'import'
+	- name.pm : bug in visitIntegerType
+
 0.20  Tue May 18 18:30:00 2004
 	- compatible with CORBA::IDL 2.40
 

@@ -154,7 +154,24 @@ sub _get_defn {
 sub visitSpecification {
 	my $self = shift;
 	my ($node) = @_;
+	if (exists $node->{list_import}) {
+		foreach (@{$node->{list_import}}) {
+			$_->visit($self);
+		}
+	}
 	foreach (@{$node->{list_export}}) {
+		$self->{symbtab}->Lookup($_)->visit($self);
+	}
+}
+
+#
+#	3.6		Import Declaration
+#
+
+sub visitImport {
+	my $self = shift;
+	my ($node) = @_;
+	foreach (@{$node->{list_decl}}) {
 		$self->{symbtab}->Lookup($_)->visit($self);
 	}
 }
@@ -276,12 +293,18 @@ sub visitIntegerType {
 	my $self = shift;
 	my ($node) = @_;
 	$node->{cpp_ns} = "CORBA";
-	if      ($node->{value} eq 'float') {
-		$node->{cpp_name} = "Float";
-	} elsif ($node->{value} eq 'double') {
-		$node->{cpp_name} = "Double";
-	} elsif ($node->{value} eq 'long double') {
-		$node->{cpp_name} = "LongDouble";
+	if      ($node->{value} eq 'short') {
+		$node->{cpp_name} = "Short";
+	} elsif ($node->{value} eq 'unsigned short') {
+		$node->{cpp_name} = "UShort";
+	} elsif ($node->{value} eq 'long') {
+		$node->{cpp_name} = "Long";
+	} elsif ($node->{value} eq 'unsigned long') {
+		$node->{cpp_name} = "ULong";
+	} elsif ($node->{value} eq 'long long') {
+		$node->{cpp_name} = "LongLong";
+	} elsif ($node->{value} eq 'unsigned long long') {
+		$node->{cpp_name} = "ULongLong";
 	} else {
 		warn __PACKAGE__,"::visitIntegerType $node->{value}.\n"
 	}
