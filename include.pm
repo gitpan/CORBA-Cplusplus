@@ -8,18 +8,15 @@ use POSIX qw(ctime);
 #			C++ Language Mapping Specification, New Edition June 1999
 #
 
-package CORBA::Cplusplus;
+package CORBA::Cplusplus::include;
 
 use vars qw($VERSION);
-$VERSION = '0.10';
+$VERSION = '0.11';
 
 package CORBA::Cplusplus::includeVisitor;
 
 # needs $node->{repos_id} (repositoryIdVisitor), $node->{cpp_name} (CplusplusNameVisitor)
 # $node->{cpp_arg} ??? (CtypeVisitor) and $node->{cpp_literal} (CplusplusLiteralVisitor)
-
-use vars qw($VERSION);
-$VERSION = '0.10';
 
 use File::Basename;
 
