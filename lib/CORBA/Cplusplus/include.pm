@@ -8,11 +8,6 @@ use POSIX qw(ctime);
 #			C++ Language Mapping Specification, New Edition June 1999
 #
 
-package CORBA::Cplusplus::include;
-
-use vars qw($VERSION);
-$VERSION = '0.21';
-
 package CORBA::Cplusplus::includeVisitor;
 
 # needs $node->{repos_id} (repositoryIdVisitor), $node->{cpp_name} (CplusplusNameVisitor)

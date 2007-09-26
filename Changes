@@ -1,5 +1,8 @@
 Revision history for Perl extension CORBA::Cplusplus.
 
+0.22  Wed Sep 26 12:30:00 2007
+	- reorg: more compliant with CPAN requirements
+
 0.21  Mon Jun  7 08:30:00 2004
 	- better support for 'import'
 	- name.pm : bug in visitIntegerType

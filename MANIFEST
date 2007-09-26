@@ -1,10 +1,12 @@
-include.pm
-literal.pm
-name.pm
-type.pm
-idl2cpp.pl
+lib/CORBA/Cplusplus.pm
+lib/CORBA/Cplusplus/include.pm
+lib/CORBA/Cplusplus/literal.pm
+lib/CORBA/Cplusplus/name.pm
+lib/CORBA/Cplusplus/type.pm
+bin/idl2cpp
 Changes
 MANIFEST
 Makefile.PL
 test.pl
 README
+META.yml                                 Module meta-data (added by MakeMaker)
