@@ -1,8 +1,9 @@
 lib/CORBA/Cplusplus.pm
-lib/CORBA/Cplusplus/include.pm
-lib/CORBA/Cplusplus/literal.pm
-lib/CORBA/Cplusplus/name.pm
-lib/CORBA/Cplusplus/type.pm
+lib/CORBA/Cplusplus/IncludeVisitor.pm
+lib/CORBA/Cplusplus/LiteralVisitor.pm
+lib/CORBA/Cplusplus/NameVisitor.pm
+lib/CORBA/Cplusplus/LengthVisitor.pm
+lib/CORBA/Cplusplus/TypeVisitor.pm
 bin/idl2cpp
 Changes
 MANIFEST
